@@ -1,0 +1,306 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// --- BACKLINK AUDITOR MODELS ---
+model Scan {
+  id        String   @id @default(cuid())
+  domain    String
+  score     Int
+  scannedAt DateTime @default(now())
+  results   String   // JSON string of full results
+}
+
+// --- COMPETITOR ANALYSIS MODELS (NEW) ---
+model CompetitorSnapshot {
+  id             String   @id @default(cuid())
+  domain         String   // The website
+  scannedAt      DateTime @default(now())
+  
+  // The metrics we want to track over time
+  seoStrength    Int      // 0-100 Score
+  authorityScore Int      // Semantic Authority
+  wordCount      Int      
+  classification String   // Dominant, Strong, etc.
+  
+  @@index([domain])       // Index for fast history lookups
+}
+
+// --- KEYWORD RESEARCH MODELS ---
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  
+  history   SearchHistory[]
+  projects  SavedProject[]
+}
+
+model SearchHistory {
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  keyword            String
+  database           String   // e.g. pk, us
+  
+  volume             Int      @default(0)
+  difficulty         Int      @default(0)
+  cpc                Float    @default(0.00)
+  competitiveDensity Float    @default(0.00)
+  results            String   @default("0")
+  intent             String   @default("General")
+  serpFeatures       String   @default("")
+  trend              String   @default("")
+  clickPotential     Int      @default(0)
+  competitors        String   @default("") 
+
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+}
+
+model SavedProject {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  items     ProjectItem[]
+}
+
+model ProjectItem {
+  id                 String   @id @default(cuid())
+  keyword            String
+  
+  volume             Int      @default(0)
+  difficulty         Int      @default(0)
+  cpc                Float    @default(0.00)
+  competitiveDensity Float    @default(0.00)
+  results            String   @default("0")
+  intent             String   @default("General")
+  serpFeatures       String   @default("")
+  trend              String   @default("")
+  clickPotential     Int      @default(0)
+  competitors        String   @default("") 
+
+  projectId          String
+  project            SavedProject @relation(fields: [projectId], references: [id])
+}
+
+model CompetitorJob {
+  id           String   @id @default(uuid())
+  domain       String
+  status       String   @default("PROCESSING")
+  resultUrl    String?
+  errorMessage String?
+  resultData   Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+// --- KEYWORD PLANNER TABLES ---
+
+model Keyword {
+  id              Int                 @id @default(autoincrement())
+  keywordText     String              @unique @map("keyword_text")
+  language        String              @default("en")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  
+  metrics         KeywordMetrics?
+  trends          KeywordTrend[]
+  serpResults     SerpResult[]
+  serpFeatures    SerpFeature[]
+  intent          KeywordIntent?
+  clusterMap      KeywordClusterMap[]
+  competitors     Competitor[]
+  difficulty      KeywordDifficulty?
+}
+
+model KeywordMetrics {
+  id                 Int      @id @default(autoincrement())
+  keywordId          Int      @unique @map("keyword_id")
+  keyword            Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  countryCode        String   @map("country_code")
+  searchVolume       Int      @map("search_volume")
+  cpc                Float
+  competitionDensity Float    @map("competition_density")
+  resultsCount       BigInt   @map("results_count")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+}
+
+model KeywordTrend {
+  id           Int     @id @default(autoincrement())
+  keywordId    Int     @map("keyword_id")
+  keyword      Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  countryCode  String  @map("country_code")
+  month        Int
+  year         Int
+  searchVolume Int     @map("search_volume")
+
+  @@unique([keywordId, countryCode, month, year])
+}
+
+model SerpResult {
+  id                    Int     @id @default(autoincrement())
+  keywordId             Int     @map("keyword_id")
+  keyword               Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  countryCode           String  @map("country_code")
+  position              Int
+  url                   String
+  domain                String
+  pageType              String  @map("page_type") 
+  referringDomains      Int     @map("referring_domains")
+  domainAuthority       Int     @map("domain_authority")
+  estimatedTrafficShare Float   @map("estimated_traffic_share")
+}
+
+model SerpFeature {
+  id          Int     @id @default(autoincrement())
+  keywordId   Int     @map("keyword_id")
+  keyword     Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  featureType String  @map("feature_type") 
+}
+
+model KeywordIntent {
+  id               Int      @id @default(autoincrement())
+  keywordId        Int      @unique @map("keyword_id")
+  keyword          Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  primaryIntent    String   @map("primary_intent")
+  secondaryIntents String[] @map("secondary_intents")
+  confidenceScore  Float    @map("confidence_score") 
+}
+
+model KeywordCluster {
+  id              Int                 @id @default(autoincrement())
+  parentKeywordId Int                 @map("parent_keyword_id")
+  clusterName     String              @map("cluster_name")
+  keywords        KeywordClusterMap[]
+}
+
+model KeywordClusterMap {
+  id                    Int            @id @default(autoincrement())
+  clusterId             Int            @map("cluster_id")
+  cluster               KeywordCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  keywordId             Int            @map("keyword_id")
+  keyword               Keyword        @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  serpOverlapPercentage Float          @map("serp_overlap_percentage")
+
+  @@unique([clusterId, keywordId])
+}
+
+model Competitor {
+  id                Int     @id @default(autoincrement())
+  keywordId         Int     @map("keyword_id")
+  keyword           Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  domain            String
+  overlapPercentage Float   @map("overlap_percentage")
+  averagePosition   Float   @map("average_position")
+  visibilityScore   Float   @map("visibility_score")
+}
+
+model KeywordDifficulty {
+  id              Int     @id @default(autoincrement())
+  keywordId       Int     @unique @map("keyword_id")
+  keyword         Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  kdScore         Int     @map("kd_score")
+  difficultyLabel String  @map("difficulty_label")
+}
+model AuditProject {
+  id          String      @id @default(cuid())
+  domain      String      @unique
+  userId      String      @default("demo_user_1")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  latestScore Int         @default(0)
+
+  scans       AuditScan[]
+}
+
+model AuditScan {
+  id            String      @id @default(cuid())
+  projectId     String
+  project       AuditProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scannedAt     DateTime    @default(now())
+  totalScanned  Int         @default(0)
+  averageScore  Int         @default(0)
+  criticalCount Int         @default(0)
+  warningCount  Int         @default(0)
+
+  pages         AuditPage[]
+}
+
+model AuditPage {
+  id               String       @id @default(cuid())
+  scanId           String
+  scan             AuditScan    @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  url              String
+  status           Int          @default(200)
+  title            String?
+  metaDesc         String?
+  h1Count          Int          @default(0)
+  readabilityScore Int          @default(0)
+  auditScore       Int          @default(0)
+  healthLabel      String       @default("Unknown")
+  isOrphan         Boolean      @default(false)
+  isDuplicateTitle Boolean      @default(false)
+  isDuplicateDesc  Boolean      @default(false)
+  
+  issues           AuditIssue[]
+}
+
+model AuditIssue {
+  id         String    @id @default(cuid())
+  pageId     String
+  page       AuditPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  severity   String    
+  message    String
+}
+model BacklinkProject {
+  id          String         @id @default(cuid())
+  domain      String         @unique
+  userId      String         @default("demo_user_1")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  latestScore Int            @default(0)
+
+  scans       BacklinkScan[]
+}
+
+model BacklinkScan {
+  id               String           @id @default(cuid())
+  projectId        String
+  project          BacklinkProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scannedAt        DateTime         @default(now())
+  healthScore      Int              @default(0)
+  totalBacklinks   Int              @default(0)
+  referringDomains Int              @default(0)
+  toxicLinks       Int              @default(0)
+
+  links            BacklinkRecord[]
+}
+
+model BacklinkRecord {
+  id                String       @id @default(cuid())
+  scanId            String
+  scan              BacklinkScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  sourceUrl         String
+  sourceTitle       String?
+  targetUrl         String?
+  anchor            String?
+  type              String       @default("Text")
+  authority         Int          @default(0)
+  spamScore         Int          @default(0)
+  bertIntent        String       @default("Unknown")
+  xgboostRisk       Float        @default(0)
+  classification    String       @default("Safe")
+  isToxic           Boolean      @default(false)
+  firstSeen         String?
+}
