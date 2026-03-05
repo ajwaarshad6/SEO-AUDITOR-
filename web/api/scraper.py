@@ -4,6 +4,7 @@ import asyncio
 import os
 from urllib.parse import urlparse, unquote
 from playwright.async_api import async_playwright
+from http.server import BaseHTTPRequestHandler
 
 def determine_page_type(url):
     path = urlparse(url).path.lower()
@@ -98,10 +99,33 @@ async def scrape_google(keyword, country="us"):
             await browser.close()
             return {"keyword": keyword, "success": False, "error": str(e)}
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        target_keyword = sys.argv[1]
-        target_country = sys.argv[2] if len(sys.argv) > 2 else "us"
-        print(json.dumps(asyncio.run(scrape_google(target_keyword, target_country))))
-    else:
-        print(json.dumps(asyncio.run(scrape_google("seo software", "us"))))
+# VERCEL REQUIRED HTTP HANDLER
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_data = self.rfile.read(content_length)
+            
+            if not post_data:
+                payload = {}
+            else:
+                payload = json.loads(post_data.decode("utf-8"))
+            
+            keyword = payload.get("keyword")
+            country = payload.get("country", "us")
+            
+            if not keyword:
+                response_data = {"error": "Keyword is required"}
+                self.send_response(400)
+            else:
+                response_data = asyncio.run(scrape_google(keyword, country))
+                self.send_response(200)
+                
+        except Exception as e:
+            response_data = {"error": str(e)}
+            self.send_response(500)
+            
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response_data).encode("utf-8"))
+        return
