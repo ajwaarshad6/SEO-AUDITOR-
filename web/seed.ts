@@ -20,13 +20,15 @@ async function runSeed() {
           keywordText: item.keyword,
           language: 'en',
           metrics: {
-            create: { searchVolume: item.volume, cpc: item.cpc, competitionDensity: item.density, resultsCount: item.results }
+            // FIX: Added the required 'countryCode' property
+            create: { countryCode: 'us', searchVolume: item.volume, cpc: item.cpc, competitionDensity: item.density, resultsCount: item.results }
           },
           difficulty: {
             create: { kdScore: item.kd, difficultyLabel: item.label }
           },
           intent: {
-            create: { primaryIntent: item.intent, confidence: 0.95 }
+            // FIX: Changed 'confidence' to the correct schema field 'confidenceScore'
+            create: { primaryIntent: item.intent, confidenceScore: 0.95 }
           }
         }
       });
