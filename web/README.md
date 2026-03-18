@@ -48,5 +48,7 @@ For long running competitor background jobs, you must start the Celery worker.
 
 celery -A tasks worker --loglevel=info
 
+
+
 Deployment Notes
 The Next.js frontend is fully optimized for deployment on Vercel. The Python backend and Celery workers should be deployed on a dedicated VPS or a containerized platform like Docker, AWS, or Render to handle the heavy browser crawling tasks efficiently.
