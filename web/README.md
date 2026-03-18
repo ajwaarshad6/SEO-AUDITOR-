@@ -1,12 +1,3 @@
----
-title: Seo Auditor Backend
-emoji: 🚀
-colorFrom: blue
-colorTo: green
-sdk: docker
-pinned: false
----
-
 SEO AUDITOR PRO
 A professional grade SEO crawler and analyzer built with Python, Scrapy, Next.js, and Playwright. This platform provides enterprise level technical audits and backlink intelligence using entirely custom code.
 
