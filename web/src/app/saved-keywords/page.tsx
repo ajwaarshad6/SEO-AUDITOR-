@@ -1,3 +1,4 @@
+
 export default async function SavedKeywordsDashboard() {
   const { PrismaClient } = await import(`@prisma/client`);
   const prisma = new PrismaClient();
@@ -20,7 +21,7 @@ export default async function SavedKeywordsDashboard() {
   }
 
   async function deleteKeyword(formData: any) {
-    `use server`;
+    "use server";
     const { PrismaClient } = await import(`@prisma/client`);
     const { revalidatePath } = await import(`next/cache`);
     const deletePrisma = new PrismaClient();
