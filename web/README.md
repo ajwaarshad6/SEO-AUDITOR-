@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+SEO AUDITOR PRO
+A professional grade SEO crawler and analyzer built with Python, Scrapy, Next.js, and Playwright. This platform provides enterprise level technical audits and backlink intelligence using entirely custom code.
 
-## Getting Started
+Technical Innovation and Custom Engines
+Unlike most SEO tools that rely on expensive third party data providers, this project is built from the ground up with 100 percent custom logic. Every calculation and data extraction process is independent of paid APIs.
 
-First, run the development server:
+Zero Paid API Dependencies: This software runs entirely on proprietary code and free data extraction methods. You can perform deep audits and keyword research without any monthly subscription costs or hidden fees.
 
-```bash
+Proprietary Difficulty Engine: The Keyword Difficulty score is calculated using a custom algorithm. It analyzes domain authority, URL slug keyword density, and SERP pressure to provide accurate ranking estimates.
+
+Native Clustering Logic: High precision keyword grouping is achieved through a unique sixty percent SERP overlap algorithm.
+
+Advanced Intent Classifier: Search intent is identified using deterministic regex patterns and SERP feature mapping.
+
+High Performance Crawling: Uses a custom Scrapy and Playwright integration to handle JavaScript heavy websites.
+
+System Architecture
+Frontend: Next.js 14, Tailwind CSS
+
+Database: PostgreSQL, Supabase, Prisma ORM
+
+Crawling Engine: Python, Scrapy, Playwright
+
+Machine Learning: Gemini API, Sentence Transformers, XGBoost
+
+Task Queue: Celery, Redis
+
+Getting Started
+Follow these steps to run the local development environment. You will need to start both the Node server and the Python backend.
+
+1. Start the Frontend
+Navigate to your main project folder and install the Node dependencies.
+
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open localhost on port 3000 with your browser to see the main dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Start the Python Backend
+Navigate to your crawler directory and install the required Python packages.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+pip install fastapi uvicorn scrapy playwright sentence-transformers xgboost
+playwright install chromium
+uvicorn analyzer:app --reload --port 8000
 
-## Learn More
+3. Run the Celery Worker
+For long running competitor background jobs, you must start the Celery worker.
 
-To learn more about Next.js, take a look at the following resources:
+celery -A tasks worker --loglevel=info
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deployment Notes
+The Next.js frontend is fully optimized for deployment on Vercel. The Python backend and Celery workers should be deployed on a dedicated VPS or a containerized platform like Docker, AWS, or Render to handle the heavy browser crawling tasks efficiently.

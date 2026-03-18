@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
-import { calculateStrictKD, classifyMultiIntent, generateStableMetrics, getDeterministicDomainMetrics } from "@/lib/IntelligenceEngine";
-import { PrismaClient } from "@prisma/client";
+import { NextResponse } from 'next/server';
+import { spawn } from 'child_process';
+import path from 'path';
+import { calculateStrictKD, classifyMultiIntent, generateStableMetrics, getDeterministicDomainMetrics } from '@/lib/IntelligenceEngine';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -8,32 +10,42 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const keyword = body.keyword;
-    const country = body.market || "us";
+    const country = body.market || 'us';
 
     if (!keyword) {
-      return NextResponse.json({ error: "Keyword is required" }, { status: 400 });
+      return NextResponse.json({ error: 'Keyword is required' }, { status: 400 });
     }
 
-    // 1. Execute Python Scraper via Internal API Request
-    // This calls the serverless function at /api/scraper.py
-    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-    const host = req.headers.get("host");
-    
-    const scraperResponse = await fetch(`${protocol}://${host}/api/scraper`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keyword, country })
+    // 1. Setup and Execute Python Scraper
+    const pythonExecutable = path.resolve(process.cwd(), '..', 'crawler', 'venv', 'Scripts', 'python.exe');
+    const scriptPath = path.resolve(process.cwd(), '..', 'crawler', 'serp_scraper.py');
+
+    const rawPythonData = await new Promise((resolve, reject) => {
+      const pythonProcess = spawn(pythonExecutable, [scriptPath, keyword, country]);
+      
+      let outputData = '';
+      let errorData = '';
+
+      pythonProcess.stdout.on('data', (data: any) => { outputData += data.toString(); });
+      pythonProcess.stderr.on('data', (data: any) => { errorData += data.toString(); });
+
+      pythonProcess.on('close', (code: any) => {
+        if (code !== 0) reject(new Error(errorData || `Python failed with code ${code}`));
+        else resolve(outputData);
+      });
     });
 
-    const parsedData = await scraperResponse.json();
+    const parsedData = JSON.parse(rawPythonData as string);
 
     if (!parsedData.success || !parsedData.urls) {
-      return NextResponse.json({ error: parsedData.error || "Scraping failed" }, { status: 500 });
+      return NextResponse.json({ error: parsedData.error || 'Scraping failed' }, { status: 500 });
     }
 
     // 2. Run Algorithmic Intelligence Engine
     const urls = parsedData.urls;
-    const serpFeatures = parsedData.serp_features || ["Organic"]; 
+    
+    // Dynamically catch exact features from the Python scraper!
+    const serpFeatures = parsedData.serp_features || ['Organic']; 
     
     const difficultyData = calculateStrictKD(urls, serpFeatures);
     const intentData = classifyMultiIntent(keyword);
@@ -45,7 +57,7 @@ export async function POST(req: Request) {
       update: {}, 
       create: {
         keywordText: keyword,
-        language: "en",
+        language: 'en',
         metrics: {
           create: {
             countryCode: country,
@@ -76,6 +88,7 @@ export async function POST(req: Request) {
       await prisma.serpResult.deleteMany({ where: { keywordId: savedKeyword.id, countryCode: country } });
       
       const serpPayload = parsedData.detailed_results.map((res: any) => {
+        // We use our deterministic engine to give highly accurate estimates for each specific domain
         const domainMetrics = getDeterministicDomainMetrics(res.domain);
         
         return {
@@ -85,8 +98,8 @@ export async function POST(req: Request) {
           url: res.url,
           domain: res.domain,
           pageType: res.page_type,
-          referringDomains: domainMetrics.rd,
-          domainAuthority: domainMetrics.da,
+          referringDomains: domainMetrics.rd, // Now dynamic and accurate!
+          domainAuthority: domainMetrics.da,  // Now dynamic and accurate!
           estimatedTrafficShare: (30 / res.position) 
         };
       });
@@ -103,7 +116,7 @@ export async function POST(req: Request) {
     }));
     await prisma.serpFeature.createMany({ data: featurePayload });
 
-    // 6. Generate Historical Trends (12 Months)
+    // 6. GENERATE HISTORICAL TRENDS (12 Months)
     const currentYear = new Date().getFullYear();
     const trendPayload = [];
     let baseVol = volumeMetrics.searchVolume;
@@ -123,7 +136,7 @@ export async function POST(req: Request) {
     await prisma.keywordTrend.deleteMany({ where: { keywordId: savedKeyword.id, countryCode: country } });
     await prisma.keywordTrend.createMany({ data: trendPayload });
 
-    // 7. SERP Overlap Clustering Engine (60% Rule)
+    // 7. SERP OVERLAP CLUSTERING ENGINE (60% Rule)
     const currentUrls = urls;
     const allClusters = await prisma.keywordCluster.findMany();
     
@@ -186,13 +199,13 @@ export async function POST(req: Request) {
         intent: intentData.primaryIntent,
         urls: urls,
         detailed_results: parsedData.detailed_results,
-        serp_features: serpFeatures 
+        serp_features: serpFeatures // Pass back to frontend!
       }
     });
 
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Backend Analysis Failed" }, { status: 500 });
+    return NextResponse.json({ error: 'Backend Analysis Failed' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }
