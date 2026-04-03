@@ -7,7 +7,7 @@ export async function POST(req: Request) {
 
     // Trigger Python
     try {
-        await fetch(`http://127.0.0.1:8000/start_deep_crawl?url=${url}`, { method: 'POST' });
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/start_deep_crawl?url=${url}`, { method: 'POST' });
     } catch (e) {
         return NextResponse.json({ error: "AI Server Offline" }, { status: 500 });
     }

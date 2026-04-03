@@ -162,7 +162,7 @@ export default function AuditPage() {
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     try {
-      await fetch(`http://127.0.0.1:8000/start_deep_crawl?url=${encodeURIComponent(targetUrl)}`, { method: 'POST' });
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/start_deep_crawl?url=${encodeURIComponent(targetUrl)}`, { method: 'POST' });
       
       intervalRef.current = setInterval(async () => {
         await fetchUpdates(); 
@@ -177,7 +177,7 @@ export default function AuditPage() {
 
   const fetchUpdates = async () => {
       try {
-          const progRes = await fetch('http://127.0.0.1:8000/get_progress', { cache: 'no-store' });
+          const progRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get_progress`, { cache: 'no-store' });
           if (progRes.ok) {
               const stats: ProgressStats = await progRes.json();
               
@@ -203,7 +203,7 @@ export default function AuditPage() {
 
   const fetchResults = async (isFinalSave = false) => {
       try {
-          const resRes = await fetch(`http://127.0.0.1:8000/get_results`, { cache: `no-store` });
+          const resRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get_results`, { cache: `no-store` });
           if (resRes.ok) {
               const responseJson = await resRes.json();
               const rawData = responseJson.results || []; 
